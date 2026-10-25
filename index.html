@@ -1,0 +1,1030 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7f5">
+  <title>Finance Calendar — Market events at a glance</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172520;
+      --muted: #78847e;
+      --line: #e8ece8;
+      --surface: #fff;
+      --canvas: #f5f7f5;
+      --green: #187a56;
+      --green-dark: #145d44;
+      --green-soft: #e9f5ee;
+      --amber: #c17b1b;
+      --red: #c45b52;
+      --blue: #5279b4;
+      --shadow: 0 8px 28px rgba(28, 48, 38, .045);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--canvas); }
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    .app-shell { min-height: 100vh; display: grid; grid-template-columns: 252px minmax(0, 1fr); }
+
+    .sidebar {
+      min-height: 100vh; padding: 28px 18px 22px; background: var(--surface);
+      border-right: 1px solid var(--line); display: flex; flex-direction: column;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 10px; }
+    .brand-mark {
+      width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center;
+      color: white; background: var(--green); font-size: 18px; font-weight: 800;
+    }
+    .brand-name { font-size: 14px; font-weight: 750; letter-spacing: -.02em; }
+    .brand-caption { margin-top: 2px; color: var(--muted); font-size: 10px; letter-spacing: .11em; text-transform: uppercase; }
+    .side-label { margin: 38px 10px 12px; color: #96a09a; font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+    .nav-link { padding: 10px 12px; display: flex; align-items: center; gap: 11px; color: #64716a; border-radius: 9px; font-size: 13px; }
+    .nav-link.active { color: var(--green-dark); background: var(--green-soft); font-weight: 700; }
+    .nav-icon { width: 17px; text-align: center; font-size: 15px; }
+    .filter-heading { margin: 0 10px 12px; display: flex; align-items: center; justify-content: space-between; color: #96a09a; font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+    .filter-heading button { border: 0; padding: 0; color: var(--green); background: none; font-size: 11px; font-weight: 650; cursor: pointer; letter-spacing: 0; text-transform: none; }
+    .filter-list { display: grid; gap: 4px; }
+    .filter-option { display: flex; align-items: center; gap: 10px; padding: 8px 10px; color: #59675f; font-size: 12px; cursor: pointer; }
+    .filter-option input { width: 14px; height: 14px; margin: 0; accent-color: var(--green); }
+    .filter-option .count { margin-left: auto; color: #9aa49e; font-size: 10px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .legend-dot.high { background: var(--red); }
+    .legend-dot.medium { background: var(--amber); }
+    .legend-dot.low { background: #9da9a2; }
+    .side-bottom { margin-top: auto; padding: 14px 10px 0; border-top: 1px solid var(--line); }
+    .timezone-label { margin-bottom: 8px; color: var(--muted); font-size: 11px; }
+    .timezone-select { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; outline-color: var(--green); background: white; color: #46544c; font-size: 12px; }
+    .data-note { margin: 12px 2px 0; color: #929d96; font-size: 10px; line-height: 1.5; }
+
+    .main { min-width: 0; padding: 30px 34px 40px; }
+    .topbar { max-width: 1440px; margin: 0 auto 25px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .eyebrow { margin-bottom: 6px; color: var(--green); font-size: 10px; font-weight: 750; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(23px, 2.5vw, 30px); letter-spacing: -.045em; line-height: 1.1; }
+    .subheading { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+    .top-actions { display: flex; align-items: center; gap: 9px; }
+    .search-wrap { position: relative; }
+    .search-wrap span { position: absolute; left: 11px; top: 9px; color: #9aa49e; font-size: 14px; }
+    .search-input { width: 210px; padding: 9px 11px 9px 32px; border: 1px solid var(--line); border-radius: 8px; outline-color: var(--green); background: white; color: var(--ink); font-size: 12px; }
+    .button { min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: white; color: #526159; font-size: 12px; font-weight: 650; cursor: pointer; transition: background .15s, border-color .15s; }
+    .button:hover { border-color: #cbd9d0; background: #fafcfb; }
+    .button.primary { border-color: var(--green); background: var(--green); color: white; }
+    .button.primary:hover { background: var(--green-dark); }
+    .button:focus-visible, select:focus-visible, input:focus-visible, .day-cell:focus-visible { outline: 2px solid #51a37c; outline-offset: 2px; }
+    .data-status { max-width: 1440px; margin: -11px auto 16px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: #65736a; font-size: 11px; line-height: 1.45; }
+    .data-status.error { border-color: #efd8d4; background: #fff9f8; color: #a44940; }
+    .data-status.ok { border-color: #d7eadd; background: #f6fbf7; color: #35684d; }
+    .source-links { display: flex; flex-wrap: wrap; gap: 10px; }
+    .source-links a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+    dialog { width: min(480px, calc(100% - 28px)); padding: 0; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 20px 80px #17252033; color: var(--ink); }
+    dialog::backdrop { background: #17252066; }
+    .day-dialog { width: min(900px, calc(100% - 28px)); max-width: 900px; max-height: min(90vh, 1000px); overflow: auto; }
+    .day-dialog-shell { padding: 20px; }
+    .day-dialog-toolbar { margin-bottom: 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .day-dialog-title { margin: 0; font-size: 20px; }
+    .day-dialog-count { margin-top: 5px; color: var(--muted); font-size: 12px; }
+    .day-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    .icon-label { display: inline-flex; align-items: center; gap: 7px; }
+    .icon-label svg { width: 16px; height: 16px; flex: none; }
+    .snapshot-content { padding: 20px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+    .snapshot-brand { margin-bottom: 13px; color: var(--green); font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+    .snapshot-date { margin: 0; font-size: 21px; }
+    .snapshot-count { margin: 5px 0 18px; color: var(--muted); font-size: 12px; }
+    .snapshot-events { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .snapshot-event-card { min-width: 0; padding: 13px 14px 13px 20px; border: 1px solid var(--line); border-radius: 8px; background: #fff; break-inside: avoid; }
+    .snapshot-event-card::before { top: 18px; left: 8px; }
+    .snapshot-event-card .agenda-title { margin-top: 6px; font-size: 13px; }
+    .snapshot-event-card .agenda-description { font-size: 11px; }
+    .snapshot-event-card .impact-tag { font-size: 10px; }
+    .snapshot-empty { padding: 20px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 12px; text-align: center; }
+    .screenshot-status { min-height: 18px; margin: 10px 2px 0; color: var(--green-dark); font-size: 11px; }
+    .screenshot-status.error { color: #a44940; }
+    .dialog-content { padding: 22px; }
+    .dialog-title { margin: 0; font-size: 18px; }
+    .dialog-copy { margin: 8px 0 18px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .key-field { margin: 14px 0; display: grid; gap: 6px; color: #47574d; font-size: 11px; font-weight: 700; }
+    .key-field input { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 7px; outline-color: var(--green); font-size: 12px; font-weight: 400; }
+    .key-field a { width: fit-content; color: var(--green); font-size: 10px; font-weight: 500; }
+    .key-warning { margin: 14px 0 18px; padding: 10px; border-radius: 7px; background: #fff7e9; color: #775827; font-size: 10px; line-height: 1.5; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+    .stats { max-width: 1440px; margin: 0 auto 20px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .stat-card { min-height: 91px; padding: 17px 18px; display: flex; align-items: center; gap: 14px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); box-shadow: var(--shadow); }
+    .stat-icon { width: 37px; height: 37px; display: grid; place-items: center; border-radius: 10px; background: #eff6f1; color: var(--green); font-size: 16px; }
+    .stat-card:nth-child(2) .stat-icon { background: #fff4e7; color: var(--amber); }
+    .stat-card:nth-child(3) .stat-icon { background: #edf2fa; color: var(--blue); }
+    .stat-value { font-size: 21px; font-weight: 750; letter-spacing: -.04em; }
+    .stat-label { margin-top: 3px; color: var(--muted); font-size: 11px; }
+
+    .content-grid { max-width: 1440px; margin: 0 auto; display: grid; grid-template-columns: minmax(520px, 1fr) 315px; align-items: start; gap: 18px; }
+    .calendar-panel, .agenda-panel { border: 1px solid var(--line); border-radius: 11px; background: white; box-shadow: var(--shadow); overflow: hidden; }
+    .calendar-toolbar { min-height: 68px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); }
+    .month-title { margin: 0; font-size: 17px; font-weight: 730; letter-spacing: -.025em; }
+    .month-controls { display: flex; align-items: center; gap: 7px; }
+    .icon-button { width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 7px; background: white; color: #64716a; font-size: 16px; cursor: pointer; }
+    .icon-button:hover { background: #f6f9f6; }
+    .today-button { min-height: 32px; }
+    .weekday-row, .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+    .calendar-grid { grid-auto-rows: minmax(136px, auto); }
+    .weekday { padding: 12px 5px; color: #96a09a; text-align: center; font-size: 9px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+    .day-cell { position: relative; min-height: 136px; padding: 8px 7px; border: 0; border-top: 1px solid #eef0ee; border-right: 1px solid #eef0ee; background: white; text-align: left; cursor: pointer; }
+    .day-cell:nth-child(7n) { border-right: 0; }
+    .day-cell.outside { background: #fbfcfb; color: #c1c9c3; }
+    .day-cell.selected { z-index: 1; outline: 2px solid var(--green); outline-offset: -2px; background: #f7fbf8; }
+    .day-cell.today .day-number { background: var(--green); color: white; }
+    .day-number { width: 23px; height: 23px; margin-bottom: 5px; display: grid; place-items: center; border-radius: 50%; color: #46544c; font-size: 11px; font-weight: 650; }
+    .event-pill { display: block; width: 100%; margin-top: 3px; padding: 4px 5px; overflow: hidden; border-radius: 4px; background: #edf5ef; color: #35684d; font-size: 9px; font-weight: 620; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+    .event-pill.econ { background: #edf5ef; color: #35684d; }
+    .event-pill.fed { background: #f0eef8; color: #65558d; }
+    .event-pill.earnings { background: #edf2fa; color: #496897; }
+    .event-pill.inflation { background: #fff3e7; color: #9a6520; }
+    .more-events { margin: 4px 3px 0; color: #7b8981; font-size: 9px; }
+    .calendar-footer { padding: 10px 15px; border-top: 1px solid var(--line); color: #8a958e; font-size: 10px; }
+
+    .agenda-panel { min-height: 300px; }
+    .agenda-heading { padding: 17px 16px 14px; border-bottom: 1px solid var(--line); }
+    .agenda-date { margin: 0; font-size: 15px; font-weight: 730; letter-spacing: -.02em; }
+    .agenda-count { margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .agenda-list { padding: 0 15px; }
+    .agenda-item { position: relative; padding: 15px 0 15px 14px; border-bottom: 1px solid #eef0ee; }
+    .agenda-item:last-child { border-bottom: 0; }
+    .agenda-item::before { position: absolute; top: 18px; left: 0; width: 6px; height: 6px; border-radius: 50%; background: var(--green); content: ""; }
+    .agenda-item[data-kind="fed"]::before { background: #8570b2; }
+    .agenda-item[data-kind="earnings"]::before { background: var(--blue); }
+    .agenda-item[data-kind="inflation"]::before { background: var(--amber); }
+    .agenda-time { color: #78847e; font-size: 10px; font-weight: 650; }
+    .agenda-title { margin-top: 5px; color: #27372f; font-size: 12px; font-weight: 700; line-height: 1.4; }
+    .agenda-description { margin-top: 4px; color: #8a958e; font-size: 10px; line-height: 1.5; }
+    .impact-tag { margin-top: 8px; display: inline-flex; align-items: center; gap: 5px; color: #718078; font-size: 9px; }
+    .empty-state { padding: 34px 15px; color: var(--muted); text-align: center; font-size: 12px; line-height: 1.6; }
+    .empty-icon { margin-bottom: 8px; color: #a9b5ad; font-size: 22px; }
+    .notice { max-width: 1440px; margin: 13px auto 0; color: #8a958e; font-size: 10px; line-height: 1.5; }
+
+    @media (max-width: 1120px) {
+      .app-shell { grid-template-columns: 220px minmax(0, 1fr); }
+      .main { padding: 26px 22px 34px; }
+      .content-grid { grid-template-columns: minmax(450px, 1fr) 275px; gap: 12px; }
+      .calendar-grid { grid-auto-rows: minmax(136px, auto); }
+      .day-cell { min-height: 136px; }
+    }
+    @media (max-width: 900px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar { min-height: 0; padding: 14px 18px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .brand { padding: 0; }
+      .side-label, .nav-link { display: none; }
+      .importance-label { display: block; margin: 8px 0 0; }
+      .filter-heading { display: flex; margin: 10px 0 4px; padding-top: 9px; border-top: 1px solid var(--line); }
+      .filter-list { display: flex; flex-wrap: wrap; gap: 0 12px; }
+      .filter-option { padding: 6px 0; font-size: 11px; }
+      .side-bottom { display: flex; align-items: center; gap: 12px; margin-top: 4px; padding: 9px 0 0; border-top: 1px solid var(--line); }
+      .timezone-label { margin: 0; white-space: nowrap; }
+      .timezone-select { width: auto; min-width: 180px; }
+      .data-note { display: none; }
+      .content-grid { grid-template-columns: minmax(0, 1fr); }
+      .agenda-panel { min-height: 0; }
+      .agenda-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; }
+    }
+    @media (max-width: 620px) {
+      .main { padding: 22px 12px 28px; }
+      .topbar { align-items: flex-start; flex-direction: column; gap: 14px; }
+      .top-actions { width: 100%; }
+      .search-wrap { flex: 1; }
+      .search-input { width: 100%; }
+      .data-status { align-items: flex-start; flex-direction: column; }
+      .stats { gap: 7px; }
+      .stat-card { min-height: 80px; padding: 11px 9px; gap: 8px; }
+      .stat-icon { width: 30px; height: 30px; font-size: 13px; }
+      .stat-value { font-size: 18px; }
+      .stat-label { font-size: 9px; line-height: 1.3; }
+      .content-grid { display: flex; flex-direction: column; }
+      .calendar-panel, .agenda-panel { width: 100%; }
+      .calendar-toolbar { padding: 12px; }
+      .calendar-grid { grid-auto-rows: minmax(126px, auto); }
+      .day-cell { min-height: 126px; padding: 5px 3px; }
+      .day-number { width: 20px; height: 20px; font-size: 10px; }
+      .weekday { font-size: 8px; }
+      .event-pill { padding: 3px 2px; font-size: 8px; }
+      .agenda-list { grid-template-columns: 1fr; }
+      .day-dialog-shell { padding: 14px; }
+      .day-dialog-toolbar { flex-direction: column; }
+      .day-dialog-actions { width: 100%; justify-content: flex-start; }
+      .snapshot-events { grid-template-columns: 1fr; }
+      .snapshot-content { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Calendar options">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">F</div>
+        <div><div class="brand-name">Finance Calendar</div><div class="brand-caption">Markets, in context</div></div>
+      </div>
+      <div class="side-label">Workspace</div>
+      <div class="nav-link active"><span class="nav-icon" aria-hidden="true">▦</span>Economic calendar</div>
+      <div class="side-label">Filter events</div>
+      <div class="filter-heading">Event categories <button id="clear-filters" type="button">Clear all</button></div>
+      <div class="filter-list" id="category-filters">
+        <label class="filter-option"><input type="checkbox" value="inflation" checked><span class="legend-dot" style="background:#c17b1b"></span>Inflation & prices<span class="count" data-category-count="inflation"></span></label>
+        <label class="filter-option"><input type="checkbox" value="fed" checked><span class="legend-dot" style="background:#8570b2"></span>Central banks<span class="count" data-category-count="fed"></span></label>
+        <label class="filter-option"><input type="checkbox" value="econ" checked><span class="legend-dot" style="background:#187a56"></span>Economy & jobs<span class="count" data-category-count="econ"></span></label>
+        <label class="filter-option"><input type="checkbox" value="earnings" checked><span class="legend-dot" style="background:#5279b4"></span>Corporate earnings<span class="count" data-category-count="earnings"></span></label>
+      </div>
+      <div class="side-label importance-label">Importance</div>
+      <div class="filter-list" id="impact-filters">
+        <label class="filter-option"><input type="checkbox" value="high" checked><span class="legend-dot high"></span>High impact</label>
+        <label class="filter-option"><input type="checkbox" value="medium" checked><span class="legend-dot medium"></span>Medium impact</label>
+        <label class="filter-option"><input type="checkbox" value="low" checked><span class="legend-dot low"></span>All other events</label>
+      </div>
+      <div class="side-bottom">
+        <div class="timezone-label">Times shown in</div>
+        <select class="timezone-select" id="timezone" aria-label="Time zone">
+          <option value="ET">Eastern Time (ET)</option>
+          <option value="CT">Central Time (CT)</option>
+          <option value="MT">Mountain Time (MT)</option>
+          <option value="PT">Pacific Time (PT)</option>
+          <option value="UTC">Coordinated Universal Time (UTC)</option>
+        </select>
+        <p class="data-note">Live sources: Finnhub, Forex Factory, Census, BEA and Federal Reserve.</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">Stay ahead of the market</div>
+          <h1>Economic calendar</h1>
+          <p class="subheading">Key data releases, central bank decisions, and company earnings.</p>
+        </div>
+        <div class="top-actions">
+          <label class="search-wrap"><span aria-hidden="true">⌕</span><input class="search-input" id="search" type="search" placeholder="Search events or companies" aria-label="Search events or companies"></label>
+          <button class="button" id="sources-button" type="button">Data sources</button>
+          <button class="button" id="export-button" type="button">Export .ics</button>
+        </div>
+      </header>
+      <div class="data-status" id="data-status" role="status" aria-live="polite"></div>
+
+      <section class="stats" aria-label="Monthly overview">
+        <article class="stat-card"><div class="stat-icon" aria-hidden="true">▦</div><div><div class="stat-value" id="event-total">—</div><div class="stat-label">Events this month</div></div></article>
+        <article class="stat-card"><div class="stat-icon" aria-hidden="true">↗</div><div><div class="stat-value" id="high-total">—</div><div class="stat-label">High-impact releases</div></div></article>
+        <article class="stat-card"><div class="stat-icon" aria-hidden="true">◷</div><div><div class="stat-value" id="earnings-total">—</div><div class="stat-label">Company reports</div></div></article>
+      </section>
+
+      <div class="content-grid">
+        <section class="calendar-panel" aria-label="Monthly calendar">
+          <div class="calendar-toolbar">
+            <h2 class="month-title" id="month-title"></h2>
+            <div class="month-controls">
+              <button class="icon-button" id="previous-month" type="button" aria-label="Previous month">‹</button>
+              <button class="button today-button" id="today-button" type="button">Today</button>
+              <button class="icon-button" id="next-month" type="button" aria-label="Next month">›</button>
+            </div>
+          </div>
+          <div class="weekday-row" aria-hidden="true">
+            <div class="weekday">Sun</div><div class="weekday">Mon</div><div class="weekday">Tue</div><div class="weekday">Wed</div><div class="weekday">Thu</div><div class="weekday">Fri</div><div class="weekday">Sat</div>
+          </div>
+          <div class="calendar-grid" id="calendar-grid"></div>
+          <div class="calendar-footer">Select a day to see its schedule. Times are displayed in the selected time zone.</div>
+        </section>
+        <aside class="agenda-panel" aria-label="Selected day schedule">
+          <div class="agenda-heading"><h2 class="agenda-date" id="agenda-date"></h2><div class="agenda-count" id="agenda-count"></div></div>
+          <div class="agenda-list" id="agenda-list"></div>
+        </aside>
+      </div>
+      <p class="notice">Live entries are provided by Finnhub, Financial Modeling Prep, Census, BEA, and the Federal Reserve. Company earnings are limited to S&amp;P 500 members and ordered by index weight, a float-adjusted market-cap proxy. Verify important announcements with the linked original source.</p>
+    </main>
+  </div>
+  <dialog id="sources-dialog" aria-labelledby="sources-title">
+    <form class="dialog-content" id="sources-form">
+      <h2 class="dialog-title" id="sources-title">Connect live data sources</h2>
+      <p class="dialog-copy">Finnhub loads company earnings. Financial Modeling Prep loads U.S. macro events such as CPI, PPI, jobs, claims, and PMI when included in your plan. Census, BEA and Federal Reserve schedules load from official sources through the local server.</p>
+      <label class="key-field">Finnhub API key — company earnings
+        <input id="finnhub-key" type="password" autocomplete="off" placeholder="Enter your Finnhub token">
+        <a href="https://finnhub.io/register" target="_blank" rel="noreferrer">Get a Finnhub key</a>
+      </label>
+      <label class="key-field">Financial Modeling Prep API key — macro events
+        <input id="fmp-key" type="password" autocomplete="off" placeholder="Enter your FMP API key">
+        <a href="https://financialmodelingprep.com/developer/docs" target="_blank" rel="noreferrer">Get an FMP API key and check plan access</a>
+      </label>
+      <div class="key-warning">Keys are stored in this browser's local storage. Finnhub is called from this browser; the FMP key is sent to the local server and then to FMP. Economic-calendar access may depend on your FMP plan. Do not use on a shared computer.</div>
+      <div class="dialog-actions">
+        <button class="button" id="remove-keys" type="button">Remove keys</button>
+        <button class="button" id="close-sources" type="button">Cancel</button>
+        <button class="button primary" type="submit">Save &amp; refresh</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="day-dialog" class="day-dialog" aria-labelledby="day-dialog-title">
+    <div class="day-dialog-shell">
+      <header class="day-dialog-toolbar">
+        <div>
+          <h2 class="day-dialog-title" id="day-dialog-title"></h2>
+          <div class="day-dialog-count" id="day-dialog-count"></div>
+        </div>
+        <div class="day-dialog-actions">
+          <button class="button primary icon-label" id="copy-day-image" type="button" title="Copy a high-resolution phone-friendly schedule image">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></svg>
+            Copy screenshot
+          </button>
+          <button class="button icon-label" id="close-day-dialog" type="button" aria-label="Close schedule">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+            Close
+          </button>
+        </div>
+      </header>
+      <section class="snapshot-content" id="day-snapshot">
+        <div class="snapshot-brand">Finance Calendar · Market events</div>
+        <h3 class="snapshot-date" id="snapshot-date"></h3>
+        <p class="snapshot-count" id="snapshot-count"></p>
+        <div class="snapshot-events" id="snapshot-events"></div>
+      </section>
+      <p class="screenshot-status" id="screenshot-status" role="status" aria-live="polite"></p>
+    </div>
+  </dialog>
+
+  <script>
+    "use strict";
+
+    const categoryLabels = { inflation: "Inflation & prices", fed: "Central banks", econ: "Economy & jobs", earnings: "Corporate earnings" };
+    const maxVisibleEvents = 4;
+    const today = new Date();
+    let shownMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    let selectedDate = toDateKey(today);
+    let calendarEvents = [];
+    let sourceStatuses = [];
+    let sp500Companies = new Map();
+    let loadSequence = 0;
+    const grid = document.getElementById("calendar-grid");
+    const sourceStatus = document.getElementById("data-status");
+    const dayDialog = document.getElementById("day-dialog");
+
+    const storedFinnhubKey = localStorage.getItem("finance-calendar-finnhub-key") || "";
+    const storedFmpKey = localStorage.getItem("finance-calendar-fmp-key") || "";
+    document.getElementById("finnhub-key").value = storedFinnhubKey;
+    document.getElementById("fmp-key").value = storedFmpKey;
+
+    function toDateKey(date) {
+      return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
+    }
+
+    function selectedValues(containerId) {
+      return Array.from(document.querySelectorAll(`#${containerId} input:checked`), input => input.value);
+    }
+
+    function getVisibleEvents() {
+      const categories = selectedValues("category-filters");
+      const impacts = selectedValues("impact-filters");
+      const query = document.getElementById("search").value.trim().toLowerCase();
+      return calendarEvents.filter(event =>
+        categories.includes(event.category) &&
+        impacts.includes(event.impact) &&
+        (!query || `${event.title} ${event.description} ${categoryLabels[event.category]}`.toLowerCase().includes(query))
+      ).sort((first, second) => {
+        const dateOrder = first.date.localeCompare(second.date);
+        if (dateOrder) return dateOrder;
+        if (first.category === "earnings" && second.category === "earnings") {
+          return first.marketCapRank - second.marketCapRank;
+        }
+        return 0;
+      });
+    }
+
+    function eventDeduplicationKey(event) {
+      const title = event.title.toLowerCase();
+      let canonicalTitle = title.replace(/[^a-z0-9/]+/g, " ").trim();
+      const period = title.match(/\b(m\/m|y\/y|q\/q|month over month|year over year|quarter over quarter)\b/);
+      if (/(?:initial|unemployment|jobless).{0,20}claims/.test(title)) canonicalTitle = "jobless claims";
+      else if (/\b(?:cpi|consumer price)\b/.test(title)) canonicalTitle = `${title.includes("core") ? "core " : ""}cpi ${period?.[1] || ""}`.trim();
+      else if (/\b(?:ppi|producer price)\b/.test(title)) canonicalTitle = `${title.includes("core") ? "core " : ""}ppi ${period?.[1] || ""}`.trim();
+      else if (/\b(?:pce|personal consumption expenditures)\b/.test(title)) canonicalTitle = `${title.includes("core") ? "core " : ""}pce ${period?.[1] || ""}`.trim();
+      else if (/\bretail sales\b/.test(title)) canonicalTitle = `${title.includes("core") ? "core " : ""}retail sales ${period?.[1] || ""}`.trim();
+      return `${event.date}|${event.category}|${canonicalTitle}`;
+    }
+
+    function deduplicateEvents(events) {
+      const uniqueEvents = new Map();
+      events.forEach(event => {
+        const key = eventDeduplicationKey(event);
+        const existing = uniqueEvents.get(key);
+        if (!existing || (existing.time === "Time not listed" && event.time !== "Time not listed")) {
+          uniqueEvents.set(key, event);
+        }
+      });
+      return [...uniqueEvents.values()];
+    }
+
+    function monthRange() {
+      const from = toDateKey(new Date(shownMonth.getFullYear(), shownMonth.getMonth(), 1));
+      const to = toDateKey(new Date(shownMonth.getFullYear(), shownMonth.getMonth() + 1, 0));
+      return { from, to };
+    }
+
+    async function fetchJson(url, options = {}) {
+      const response = await fetch(url, options);
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || `Request failed (${response.status})`);
+      }
+      return result;
+    }
+
+    async function fetchFinnhubEvents(key, from, to) {
+      const query = new URLSearchParams({ from, to, token: key, international: "false" });
+      const response = await fetchJson(`https://finnhub.io/api/v1/calendar/earnings?${query}`);
+      if (!Array.isArray(response.earningsCalendar)) {
+        throw new Error("Finnhub returned an unexpected earnings-calendar response.");
+      }
+      return response.earningsCalendar.filter(entry => entry.date && entry.symbol).flatMap(entry => {
+        const company = sp500Companies.get(entry.symbol.toUpperCase().replace(/[./-]/g, ""));
+        if (!company) return [];
+        return [{
+          date: entry.date,
+          time: entry.hour === "bmo" ? "Before market open" : entry.hour === "amc" ? "After market close" : "Time not listed",
+          title: `${company.company} (${entry.symbol}) earnings`,
+          category: "earnings",
+          impact: "medium",
+          marketCapRank: company.rank,
+          indexWeight: company.weight,
+          description: `S&P 500 index-weight rank #${company.rank} (${company.weight.toFixed(2)}% weight). Quarter ${entry.quarter ?? "—"} ${entry.year ?? ""}.`,
+          source: "https://finnhub.io/",
+        }];
+      });
+    }
+
+    async function fetchFmpEvents(key, from, to) {
+      const response = await fetchJson("/api/fmp-events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-FMP-API-Key": key },
+        body: JSON.stringify({ from, to }),
+      });
+      if (!Array.isArray(response.events) || !response.source) {
+        throw new Error("Financial Modeling Prep returned an unexpected calendar response.");
+      }
+      return response;
+    }
+
+    function renderDataStatus(loading = false) {
+      sourceStatus.className = `data-status${loading ? "" : sourceStatuses.some(source => source.status === "error") ? " error" : sourceStatuses.length ? " ok" : ""}`;
+      sourceStatus.replaceChildren();
+      const text = document.createElement("span");
+      text.textContent = loading
+        ? "Loading live schedules…"
+        : sourceStatuses.length
+          ? "Live source status:"
+          : "No live source data loaded.";
+      sourceStatus.append(text);
+      const links = document.createElement("span");
+      links.className = "source-links";
+      sourceStatuses.forEach(source => {
+        const link = document.createElement("a");
+        link.href = source.url;
+        link.target = "_blank";
+        link.rel = "noreferrer";
+        link.textContent = source.status === "ok"
+          ? `${source.name}: live`
+          : source.status === "external"
+            ? `${source.name}: ${source.statusLabel || "not embedded"}`
+            : `${source.name}: unavailable (${source.error})`;
+        links.append(link);
+      });
+      const blsLink = document.createElement("a");
+      blsLink.href = "https://www.bls.gov/schedule/news_release/";
+      blsLink.target = "_blank";
+      blsLink.rel = "noreferrer";
+      blsLink.textContent = "BLS: official schedule";
+      links.append(blsLink);
+      const ismLink = document.createElement("a");
+      ismLink.href = "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/";
+      ismLink.target = "_blank";
+      ismLink.rel = "noreferrer";
+      ismLink.textContent = "ISM: official PMI reports";
+      links.append(ismLink);
+      sourceStatus.append(links);
+      const refreshButton = document.createElement("button");
+      refreshButton.className = "button";
+      refreshButton.type = "button";
+      refreshButton.textContent = "Refresh";
+      refreshButton.disabled = loading;
+      refreshButton.addEventListener("click", loadEvents);
+      sourceStatus.append(refreshButton);
+    }
+
+    async function loadEvents() {
+      const sequence = ++loadSequence;
+      const { from, to } = monthRange();
+      const finnHubKey = localStorage.getItem("finance-calendar-finnhub-key") || "";
+      const events = [];
+      sourceStatuses = [];
+      renderDataStatus(true);
+
+      try {
+        const response = await fetchJson(`/api/official-events?${new URLSearchParams({ from, to })}`);
+        if (sequence !== loadSequence) return;
+        events.push(...response.events);
+        sourceStatuses.push(...response.sources);
+      } catch (error) {
+        if (sequence !== loadSequence) return;
+        sourceStatuses.push(
+          { name: "BEA/Federal Reserve", status: "error", url: "https://www.bea.gov/news/schedule", error: `Local server unavailable. Run python server.py. ${error.message}` },
+        );
+      }
+
+      const requests = [];
+      let rankingAvailable = false;
+      try {
+        const rankingResponse = await fetchJson("/api/sp500-weights");
+        if (!Array.isArray(rankingResponse.companies)) {
+          throw new Error("The S&P 500 weight list has an unexpected response.");
+        }
+        sp500Companies = new Map(rankingResponse.companies.map(company => [
+          company.symbol.toUpperCase().replace(/[./-]/g, ""),
+          company,
+        ]));
+        sourceStatuses.push(rankingResponse.source);
+        rankingAvailable = true;
+      } catch (error) {
+        sourceStatuses.push({
+          name: "S&P 500 weights",
+          status: "error",
+          url: "https://www.slickcharts.com/sp500",
+          error: error.message,
+        });
+      }
+      if (finnHubKey) requests.push(
+        rankingAvailable
+          ? fetchFinnhubEvents(finnHubKey, from, to)
+            .then(items => { if (sequence === loadSequence) { events.push(...items); sourceStatuses.push({ name: "Finnhub", status: "ok", url: "https://finnhub.io/" }); } })
+          .catch(error => { if (sequence === loadSequence) sourceStatuses.push({ name: "Finnhub", status: "error", url: "https://finnhub.io/", error: error.message }); })
+          : Promise.resolve().then(() => {
+            if (sequence === loadSequence) sourceStatuses.push({
+              name: "Finnhub earnings",
+              status: "error",
+              url: "https://finnhub.io/",
+              error: "Not loaded because the S&P 500 weight list is unavailable.",
+            });
+          })
+      );
+      else sourceStatuses.push({ name: "Finnhub", status: "external", statusLabel: "API key required", url: "https://finnhub.io/register" });
+      const fmpKey = localStorage.getItem("finance-calendar-fmp-key") || "";
+      if (fmpKey) requests.push(
+        fetchFmpEvents(fmpKey, from, to)
+          .then(response => { if (sequence === loadSequence) { events.push(...response.events); sourceStatuses.push(response.source); } })
+          .catch(error => { if (sequence === loadSequence) sourceStatuses.push({ name: "Financial Modeling Prep", status: "error", url: "https://site.financialmodelingprep.com/developer/docs/stable/economic-calendar", error: error.message }); })
+      );
+      else sourceStatuses.push({ name: "Financial Modeling Prep", status: "external", statusLabel: "API key required", url: "https://financialmodelingprep.com/developer/docs" });
+      await Promise.all(requests);
+      if (sequence !== loadSequence) return;
+      calendarEvents = deduplicateEvents(events);
+      const upcoming = events.find(event => event.date >= toDateKey(today));
+      if (!eventsForDate(selectedDate, events).length && upcoming) selectedDate = upcoming.date;
+      renderDataStatus();
+      renderCalendar();
+      renderAgenda();
+    }
+
+    function eventsForDate(dateKey, events) {
+      return events.filter(event => event.date === dateKey);
+    }
+
+    function convertTime(time, zone, dateKey, sourceTimeZone = "America/New_York") {
+      if (!time.includes("AM") && !time.includes("PM")) return time;
+      const match = time.match(/^(\d{1,2}):(\d{2})\s+(AM|PM)$/);
+      if (!match) return time;
+      const zoneNames = { ET: "America/New_York", CT: "America/Chicago", MT: "America/Denver", PT: "America/Los_Angeles", UTC: "UTC" };
+      const sourceZone = sourceTimeZone;
+      const targetZone = zoneNames[zone] || "America/New_York";
+      const [year, month, day] = dateKey.split("-").map(Number);
+      const hour = Number(match[1]) % 12 + (match[3] === "PM" ? 12 : 0);
+      const desiredWallTime = Date.UTC(year, month - 1, day, hour, Number(match[2]));
+      let instant = desiredWallTime;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const sourceParts = new Intl.DateTimeFormat("en-US", {
+          timeZone: sourceZone, year: "numeric", month: "2-digit", day: "2-digit",
+          hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+        }).formatToParts(new Date(instant));
+        const sourceValues = Object.fromEntries(sourceParts.map(part => [part.type, part.value]));
+        const representedWallTime = Date.UTC(
+          Number(sourceValues.year), Number(sourceValues.month) - 1, Number(sourceValues.day),
+          Number(sourceValues.hour), Number(sourceValues.minute),
+        );
+        instant += desiredWallTime - representedWallTime;
+      }
+      const resultDate = new Date(instant);
+      const formattedTime = new Intl.DateTimeFormat("en-US", {
+        timeZone: targetZone, hour: "numeric", minute: "2-digit", hourCycle: "h12",
+      }).format(resultDate);
+      const localDateKey = timeZone => {
+        const parts = new Intl.DateTimeFormat("en-US", {
+          timeZone, year: "numeric", month: "2-digit", day: "2-digit",
+        }).formatToParts(resultDate);
+        const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+        return `${values.year}-${values.month}-${values.day}`;
+      };
+      const targetDate = localDateKey(targetZone);
+      const dayShift = targetDate < dateKey ? " (prev. day)" : targetDate > dateKey ? " (next day)" : "";
+      return `${formattedTime}${dayShift}`;
+    }
+
+    function renderCalendar() {
+      const visibleEvents = getVisibleEvents();
+      const year = shownMonth.getFullYear();
+      const month = shownMonth.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const start = new Date(year, month, 1 - firstDay.getDay());
+      document.getElementById("month-title").textContent = shownMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+      grid.replaceChildren();
+
+      for (let i = 0; i < 42; i += 1) {
+        const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+        const key = toDateKey(date);
+        const dayEvents = eventsForDate(key, visibleEvents);
+        const cell = document.createElement("button");
+        cell.type = "button";
+        cell.className = `day-cell${date.getMonth() !== month ? " outside" : ""}${key === selectedDate ? " selected" : ""}${key === toDateKey(today) ? " today" : ""}`;
+        cell.setAttribute("aria-label", `${date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}, ${dayEvents.length} events`);
+        cell.setAttribute("aria-pressed", String(key === selectedDate));
+        const number = document.createElement("span");
+        number.className = "day-number";
+        number.textContent = String(date.getDate());
+        cell.append(number);
+
+        dayEvents.slice(0, maxVisibleEvents).forEach(event => {
+          const pill = document.createElement("span");
+          pill.className = `event-pill ${event.category}`;
+          pill.textContent = event.title;
+          cell.append(pill);
+        });
+        if (dayEvents.length > maxVisibleEvents) {
+          const more = document.createElement("div");
+          more.className = "more-events";
+          more.textContent = `+${dayEvents.length - maxVisibleEvents} more`;
+          cell.append(more);
+        }
+        cell.addEventListener("click", () => {
+          selectedDate = key;
+          if (date.getMonth() !== month) shownMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+          renderCalendar();
+          renderAgenda();
+          renderDayDialog();
+          dayDialog.showModal();
+        });
+        grid.append(cell);
+      }
+      renderStats(visibleEvents);
+    }
+
+    function renderStats(visibleEvents) {
+      const monthEvents = visibleEvents.filter(event => event.date.startsWith(`${shownMonth.getFullYear()}-${String(shownMonth.getMonth() + 1).padStart(2, "0")}`));
+      document.getElementById("event-total").textContent = monthEvents.length;
+      document.getElementById("high-total").textContent = monthEvents.filter(event => event.impact === "high").length;
+      document.getElementById("earnings-total").textContent = monthEvents.filter(event => event.category === "earnings").length;
+      document.querySelectorAll("[data-category-count]").forEach(count => {
+        count.textContent = calendarEvents.filter(event => event.category === count.dataset.categoryCount).length;
+      });
+    }
+
+    function renderAgenda() {
+      const date = new Date(`${selectedDate}T12:00:00`);
+      const visibleEvents = eventsForDate(selectedDate, getVisibleEvents());
+      document.getElementById("agenda-date").textContent = date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+      document.getElementById("agenda-count").textContent = `${visibleEvents.length} ${visibleEvents.length === 1 ? "event" : "events"} scheduled`;
+      const list = document.getElementById("agenda-list");
+      list.replaceChildren();
+
+      if (visibleEvents.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty-state";
+        const icon = document.createElement("div");
+        icon.className = "empty-icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = "◷";
+        const message = document.createElement("div");
+        message.textContent = calendarEvents.length
+          ? "No matching events on this day. Choose another date or adjust your filters."
+          : "No live events loaded. Add your API keys and run the local server to fetch schedules.";
+        empty.append(icon, message);
+        list.append(empty);
+        return;
+      }
+
+      visibleEvents.forEach(event => {
+        const item = document.createElement("article");
+        item.className = "agenda-item";
+        item.dataset.kind = event.category;
+        const time = document.createElement("div");
+        time.className = "agenda-time";
+        time.textContent = convertTime(event.time, document.getElementById("timezone").value, event.date, event.timeZone);
+        const title = document.createElement("div");
+        title.className = "agenda-title";
+        title.textContent = event.title;
+        const description = document.createElement("div");
+        description.className = "agenda-description";
+        description.textContent = event.description;
+        const impact = document.createElement("span");
+        impact.className = "impact-tag";
+        const dot = document.createElement("span");
+        dot.className = `legend-dot ${event.impact}`;
+        const label = document.createElement("span");
+        label.textContent = event.category === "earnings"
+          ? `S&P 500 #${event.marketCapRank} · ${event.indexWeight.toFixed(2)}% index weight`
+          : `${event.impact[0].toUpperCase()}${event.impact.slice(1)} impact · ${categoryLabels[event.category]}`;
+        impact.append(dot, label);
+        item.append(time, title, description, impact);
+        if (event.source) {
+          const source = document.createElement("a");
+          source.href = event.source;
+          source.target = "_blank";
+          source.rel = "noreferrer";
+          source.className = "agenda-description";
+          source.textContent = "View source";
+          item.append(source);
+        }
+        list.append(item);
+      });
+    }
+
+    function renderDayDialog() {
+      const date = new Date(`${selectedDate}T12:00:00`);
+      const formattedDate = date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+      const visibleEvents = eventsForDate(selectedDate, getVisibleEvents());
+      const countLabel = `${visibleEvents.length} ${visibleEvents.length === 1 ? "event" : "events"} scheduled`;
+      document.getElementById("day-dialog-title").textContent = formattedDate;
+      document.getElementById("day-dialog-count").textContent = countLabel;
+      document.getElementById("snapshot-date").textContent = formattedDate;
+      document.getElementById("snapshot-count").textContent = countLabel;
+      const cards = document.getElementById("snapshot-events");
+      cards.replaceChildren();
+      document.querySelectorAll("#agenda-list .agenda-item").forEach(agendaItem => {
+        const card = agendaItem.cloneNode(true);
+        card.classList.add("snapshot-event-card");
+        cards.append(card);
+      });
+      if (visibleEvents.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "snapshot-empty";
+        empty.textContent = "No events match the current filters for this date.";
+        cards.append(empty);
+      }
+      const status = document.getElementById("screenshot-status");
+      status.textContent = "";
+      status.classList.remove("error");
+    }
+
+    function wrapScreenshotText(value, maxCharacters, maxLines) {
+      const words = String(value).trim().split(/\s+/);
+      const lines = [];
+      let line = "";
+      words.forEach(word => {
+        const nextLine = line ? `${line} ${word}` : word;
+        if (nextLine.length > maxCharacters && line) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = nextLine;
+        }
+      });
+      if (line) lines.push(line);
+      if (lines.length > maxLines) {
+        lines.length = maxLines;
+        lines[maxLines - 1] = `${lines[maxLines - 1].slice(0, maxCharacters - 3)}...`;
+      }
+      return lines;
+    }
+
+    function escapeSvgText(value) {
+      return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+    }
+
+    function screenshotEventPriority(event) {
+      const title = event.title.toLowerCase();
+      if (/\b(fomc|federal reserve|fed funds|interest rate decision)\b/.test(title)) return 0;
+      if (/\b(core )?(cpi|consumer price|pce|personal consumption expenditures|inflation)\b/.test(title)) return 1;
+      if (/\b(nonfarm|payroll|employment|unemployment rate|jobs report)\b/.test(title)) return 2;
+      if (/\b(gdp|gross domestic product)\b/.test(title)) return 3;
+      if (/\b(ppi|producer price)\b/.test(title)) return 4;
+      if (/\b(retail sales)\b/.test(title)) return 5;
+      if (/\b(jobless claims|initial claims|continuing claims)\b/.test(title)) return 6;
+      if (/\b(pmi|purchasing managers)\b/.test(title)) return 7;
+      if (event.category === "earnings") return 8;
+      return 9;
+    }
+
+    function createDayScreenshot() {
+      const allEvents = eventsForDate(selectedDate, getVisibleEvents());
+      const events = [...allEvents].sort((first, second) => {
+        const impactOrder = { high: 0, medium: 1, low: 2 };
+        const impactDifference = impactOrder[first.impact] - impactOrder[second.impact];
+        if (impactDifference) return impactDifference;
+        const priorityDifference = screenshotEventPriority(first) - screenshotEventPriority(second);
+        if (priorityDifference) return priorityDifference;
+        if (first.category === "earnings" && second.category === "earnings") return first.marketCapRank - second.marketCapRank;
+        return 0;
+      }).slice(0, 15);
+      const width = 1170;
+      const padding = 32;
+      const gap = 10;
+      const columns = 2;
+      const cardWidth = (width - padding * 2 - gap) / columns;
+      const cardHeight = 234;
+      const rowGap = 10;
+      const rowCount = Math.ceil(events.length / columns);
+      const gridTop = 170;
+      const height = Math.max(252, gridTop + rowCount * cardHeight + Math.max(0, rowCount - 1) * rowGap + padding);
+      const date = new Date(`${selectedDate}T12:00:00`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+      const dateLabel = escapeSvgText(date);
+      const countLabel = escapeSvgText(allEvents.length > events.length
+        ? `Top ${events.length} of ${allEvents.length} events · sorted by importance`
+        : `${allEvents.length} ${allEvents.length === 1 ? "event" : "events"} scheduled`);
+      const cards = events.map((event, index) => {
+        const x = padding + (index % columns) * (cardWidth + gap);
+        const y = gridTop + Math.floor(index / columns) * (cardHeight + rowGap);
+        const tone = event.category === "fed" ? "#65558d" : event.category === "earnings" ? "#496897" : event.category === "inflation" ? "#9a6520" : "#35684d";
+        const impactTone = event.impact === "high" ? "#c45b52" : event.impact === "medium" ? "#c17b1b" : "#9da9a2";
+        const titleLines = wrapScreenshotText(event.title, 24, 3);
+        const impactLabel = event.category === "earnings"
+          ? `S&P 500 #${event.marketCapRank} · ${event.indexWeight.toFixed(2)}% weight`
+          : `${event.impact[0].toUpperCase()}${event.impact.slice(1)} impact · ${categoryLabels[event.category]}`;
+        const textLines = (lines, startY, lineHeight, fontSize, weight, fill) => lines.map((line, lineIndex) =>
+          `<text x="${x + 28}" y="${startY + lineIndex * lineHeight}" font-size="${fontSize}" font-weight="${weight}" fill="${fill}">${escapeSvgText(line)}</text>`
+        ).join("");
+        const textX = x + 28;
+        const timeY = y + 36;
+        const titleY = y + 82;
+        const impactY = y + 200;
+        const timeFontSize = 28;
+        const titleFontSize = 36;
+        const titleLineHeight = 40;
+        const impactFontSize = 20;
+        const impactTextTone = event.category === "earnings" ? tone : impactTone;
+        return `<rect x="${x}" y="${y}" width="${cardWidth}" height="${cardHeight}" rx="10" fill="#ffffff" stroke="#e8ece8"/><rect x="${x}" y="${y}" width="6" height="${cardHeight}" rx="2" fill="${tone}"/><text x="${textX}" y="${timeY}" font-size="${timeFontSize}" font-weight="650" fill="#78847e">${escapeSvgText(convertTime(event.time, document.getElementById("timezone").value, event.date, event.timeZone))}</text>${textLines(titleLines, titleY, titleLineHeight, titleFontSize, 700, "#27372f")}<circle cx="${textX + 7}" cy="${impactY - 7}" r="7" fill="${impactTone}"/><text x="${textX + 22}" y="${impactY}" font-size="${impactFontSize}" font-weight="600" fill="${impactTextTone}">${escapeSvgText(impactLabel)}</text>`;
+      }).join("");
+      const brandSize = 21;
+      const dateSize = 48;
+      const countSize = 27;
+      const brandY = 50;
+      const dateY = 106;
+      const countY = 150;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="Arial, sans-serif"><rect width="100%" height="100%" fill="#f5f7f5"/><rect x="12" y="12" width="${width - 24}" height="${height - 24}" rx="14" fill="#ffffff" stroke="#e8ece8"/><text x="${padding}" y="${brandY}" font-size="${brandSize}" font-weight="700" letter-spacing="2" fill="#187a56">FINANCE CALENDAR · MARKET EVENTS</text><text x="${padding}" y="${dateY}" font-size="${dateSize}" font-weight="700" fill="#172520">${dateLabel}</text><text x="${padding}" y="${countY}" font-size="${countSize}" fill="#78847e">${countLabel}</text>${cards}</svg>`;
+      const svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+      const outputScale = 0.85;
+      const outputWidth = Math.round(width * outputScale);
+      const outputHeight = Math.round(height * outputScale);
+      const imageBlob = new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = outputWidth;
+          canvas.height = outputHeight;
+          const context = canvas.getContext("2d");
+          if (!context) {
+            URL.revokeObjectURL(svgUrl);
+            reject(new Error("Could not create an image canvas."));
+            return;
+          }
+          context.fillStyle = "#ffffff";
+          context.fillRect(0, 0, outputWidth, outputHeight);
+          context.drawImage(image, 0, 0, outputWidth, outputHeight);
+          URL.revokeObjectURL(svgUrl);
+          canvas.toBlob(blob => {
+            if (blob) resolve(blob);
+            else reject(new Error("The browser could not render the screenshot image."));
+          }, "image/png");
+        };
+        image.onerror = () => {
+          URL.revokeObjectURL(svgUrl);
+          reject(new Error("The browser could not render the schedule screenshot."));
+        };
+        image.src = svgUrl;
+      });
+      return { imageBlob, shownCount: events.length, totalCount: allEvents.length, layout: "phone" };
+    }
+
+    async function copyDayScreenshot() {
+      const button = document.getElementById("copy-day-image");
+      const status = document.getElementById("screenshot-status");
+      if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") {
+        status.textContent = "Image clipboard access is unavailable in this browser. Try a current version of Chrome or Edge on localhost.";
+        status.classList.add("error");
+        return;
+      }
+      button.disabled = true;
+      status.textContent = "Preparing screenshot…";
+      status.classList.remove("error");
+      try {
+        const screenshot = createDayScreenshot();
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": screenshot.imageBlob })]);
+        const imageShape = screenshot.layout === "phone" ? "phone-friendly" : "landscape";
+        status.textContent = `Copied ${screenshot.shownCount} of ${screenshot.totalCount} events as a ${imageShape} image. Paste it to share.`;
+      } catch (error) {
+        status.textContent = `Could not copy screenshot: ${error.message}`;
+        status.classList.add("error");
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    function refresh() {
+      renderCalendar();
+      renderAgenda();
+      if (dayDialog.open) renderDayDialog();
+    }
+
+    function escapeIcs(value) {
+      return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+    }
+
+    function exportCalendar() {
+      const events = getVisibleEvents().filter(event => event.date.startsWith(`${shownMonth.getFullYear()}-${String(shownMonth.getMonth() + 1).padStart(2, "0")}`));
+      const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Finance Calendar//Events//EN", "CALSCALE:GREGORIAN"];
+      events.forEach((event, index) => {
+        const dateParts = event.date.split("-").join("");
+        const timeMatch = event.time.match(/^(\d{1,2}):(\d{2})\s+(AM|PM)$/);
+        let startLine = `DTSTART;VALUE=DATE:${dateParts}`;
+        if (timeMatch) {
+          let hour = Number(timeMatch[1]) % 12 + (timeMatch[3] === "PM" ? 12 : 0);
+          startLine = `DTSTART;TZID=${event.timeZone || "America/New_York"}:${dateParts}T${String(hour).padStart(2, "0")}${timeMatch[2]}00`;
+        }
+        lines.push("BEGIN:VEVENT", `UID:${dateParts}-${index}@finance-calendar.local`, startLine, `SUMMARY:${escapeIcs(event.title)}`, `DESCRIPTION:${escapeIcs(event.description)} (${event.impact} impact)${event.source ? `\\nSource: ${escapeIcs(event.source)}` : ""}`, "END:VEVENT");
+      });
+      lines.push("END:VCALENDAR");
+      const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `finance-calendar-${shownMonth.getFullYear()}-${String(shownMonth.getMonth() + 1).padStart(2, "0")}.ics`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    document.getElementById("previous-month").addEventListener("click", () => {
+      shownMonth = new Date(shownMonth.getFullYear(), shownMonth.getMonth() - 1, 1);
+      selectedDate = toDateKey(shownMonth);
+      loadEvents();
+    });
+    document.getElementById("next-month").addEventListener("click", () => {
+      shownMonth = new Date(shownMonth.getFullYear(), shownMonth.getMonth() + 1, 1);
+      selectedDate = toDateKey(shownMonth);
+      loadEvents();
+    });
+    document.getElementById("today-button").addEventListener("click", () => {
+      shownMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      selectedDate = toDateKey(today);
+      loadEvents();
+    });
+    document.getElementById("search").addEventListener("input", refresh);
+    document.getElementById("timezone").addEventListener("change", () => {
+      renderAgenda();
+      if (dayDialog.open) renderDayDialog();
+    });
+    document.getElementById("category-filters").addEventListener("change", refresh);
+    document.getElementById("impact-filters").addEventListener("change", refresh);
+    document.getElementById("clear-filters").addEventListener("click", () => {
+      document.querySelectorAll("#category-filters input").forEach(input => { input.checked = false; });
+      refresh();
+    });
+    document.getElementById("export-button").addEventListener("click", exportCalendar);
+    document.getElementById("close-day-dialog").addEventListener("click", () => dayDialog.close());
+    document.getElementById("copy-day-image").addEventListener("click", copyDayScreenshot);
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && dayDialog.open) {
+        event.preventDefault();
+        dayDialog.close();
+      }
+    }, true);
+    dayDialog.addEventListener("cancel", event => {
+      event.preventDefault();
+      dayDialog.close();
+    });
+    dayDialog.addEventListener("click", event => {
+      if (event.target === dayDialog) dayDialog.close();
+    });
+    document.getElementById("sources-button").addEventListener("click", () => document.getElementById("sources-dialog").showModal());
+    document.getElementById("close-sources").addEventListener("click", () => document.getElementById("sources-dialog").close());
+    document.getElementById("sources-form").addEventListener("submit", event => {
+      event.preventDefault();
+      const finnhubKey = document.getElementById("finnhub-key").value.trim();
+      const fmpKey = document.getElementById("fmp-key").value.trim();
+      if (finnhubKey) localStorage.setItem("finance-calendar-finnhub-key", finnhubKey);
+      else localStorage.removeItem("finance-calendar-finnhub-key");
+      if (fmpKey) localStorage.setItem("finance-calendar-fmp-key", fmpKey);
+      else localStorage.removeItem("finance-calendar-fmp-key");
+      document.getElementById("sources-dialog").close();
+      loadEvents();
+    });
+    document.getElementById("remove-keys").addEventListener("click", () => {
+      localStorage.removeItem("finance-calendar-finnhub-key");
+      localStorage.removeItem("finance-calendar-fmp-key");
+      document.getElementById("finnhub-key").value = "";
+      document.getElementById("fmp-key").value = "";
+      document.getElementById("sources-dialog").close();
+      loadEvents();
+    });
+
+    renderCalendar();
+    renderAgenda();
+    loadEvents();
+  </script>
+</body>
+</html>
